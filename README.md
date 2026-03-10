@@ -92,7 +92,7 @@ sudo victus-rgb current
 | Blue   | 0 0 255     |
 | Yellow | 255 255 0   |
 | Cyan   | 0 255 255   |
-| Purple | 255 0 255   |
+| Purple | 100 12 223  |
 | White  | 255 255 255 |
 | Off    | 0 0 0       |
 
@@ -173,12 +173,6 @@ Blue
 
 ```
 sudo victus-rgb 0 0 255
-```
-
-Purple
-
-```
-sudo victus-rgb 255 0 255
 ```
 
 ---
