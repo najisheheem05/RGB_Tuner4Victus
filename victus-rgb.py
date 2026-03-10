@@ -2,6 +2,7 @@
 
 import os
 import sys
+import subprocess
 
 EC_PATH = "/sys/kernel/debug/ec/ec0/io"
 OFFSET = 8
@@ -12,7 +13,7 @@ PRESET_COLORS = {
     "blue": (0, 0, 255),
     "yellow": (255, 255, 0),
     "cyan": (0, 255, 255),
-    "purple": (100, 12, 225),
+    "purple": (100, 12, 223),
     "white": (255, 255, 255),
     "off": (0, 0, 0),
 }
@@ -20,7 +21,23 @@ PRESET_COLORS = {
 
 def require_root():
     if os.geteuid() != 0:
-        print("Run with sudo.")
+        print("Please run with sudo.")
+        sys.exit(1)
+
+
+def ensure_ec_access():
+    # mount debugfs if needed
+    if not os.path.exists("/sys/kernel/debug"):
+        subprocess.run(
+            ["mount", "-t", "debugfs", "none", "/sys/kernel/debug"], check=True
+        )
+
+    # load EC module if needed
+    if not os.path.exists(EC_PATH):
+        subprocess.run(["modprobe", "ec_sys", "write_support=1"], check=True)
+
+    if not os.path.exists(EC_PATH):
+        print("EC interface not found.")
         sys.exit(1)
 
 
@@ -77,7 +94,7 @@ def parse_args():
 
         for v in (r, g, b):
             if v < 0 or v > 255:
-                print("RGB values must be 0–255.")
+                print("RGB values must be between 0 and 255.")
                 sys.exit(1)
 
         return (r, g, b)
@@ -92,6 +109,7 @@ def parse_args():
 
 def main():
     require_root()
+    ensure_ec_access()
 
     result = parse_args()
 
