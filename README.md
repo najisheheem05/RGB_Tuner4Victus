@@ -143,6 +143,8 @@ If you want to try before making executable.
 
 ```bash
 sudo python victus-rgb.py R G B (or any preset color)
+```
+
 ---
 
 ## Usage
