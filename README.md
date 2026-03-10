@@ -66,6 +66,12 @@ The program automatically loads the module when needed.
 
 Clone or download the repository.
 
+Enter to the directory
+
+```bash
+cd RGB-Tuner4Victus
+```
+
 Make the script executable:
 
 ```bash
@@ -82,6 +88,12 @@ Then run commands like:
 
 ```bash
 sudo victus-rgb red
+```
+
+If running as python script
+
+```bash
+sudo python victus-rgb.py red
 ```
 
 ---
@@ -236,7 +248,7 @@ Tested on:
 
 - HP Victus 16
 
-Other Victus models may work if they use the same EC RGB layout.
+Other Victus and Omen models may work if they use the same EC RGB layout.
 
 ---
 
