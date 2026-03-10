@@ -2,7 +2,7 @@
 
 Control the keyboard RGB lighting on **HP Victus laptops** directly from Linux by writing RGB values to the Embedded Controller (EC).
 
-This project was created after reverse-engineering how the lighting values are stored in EC memory. It allows you to change keyboard colors without using Windows or OMEN Gaming Hub.
+This project was created after reverse-engineering how the lighting values are stored in EC memory. It allows you to change keyboard colors and run lighting effects without Windows or OMEN Gaming Hub.
 
 ---
 
@@ -12,15 +12,28 @@ This project was created after reverse-engineering how the lighting values are s
 - No Windows or proprietary software required
 - Simple command line interface
 - Lightweight (single Python script)
+- Automatic EC access setup
+- Background lighting effects
+- Automatic replacement of running effects
+
+Supported lighting modes:
+
+- Static colors
+- Custom RGB
+- Rainbow
+- Breathing effect
+- Alternate between two colors
+- Fade between two colors
 
 ---
 
-## How it works
+## How It Works
 
 The keyboard lighting values are stored in EC registers.
-The RGB triplet appears starting at **offset `0x08`** inside the EC memory.
 
-Example EC values discovered during testing:
+The RGB values are written starting at **offset `0x08`** inside EC memory.
+
+Example values discovered during testing:
 
 | Color | EC Bytes   |
 | ----- | ---------- |
@@ -28,104 +41,30 @@ Example EC values discovered during testing:
 | Green | `00 e4 00` |
 | Blue  | `00 00 e4` |
 
-These values were observed in EC dumps when changing colors in OMEN software.
-
-The program writes the RGB bytes directly to:
+The program writes RGB values directly to:
 
 ```
+
 /sys/kernel/debug/ec/ec0/io
-```
-
----
-
-## Preset Colors
-
-The program also supports several predefined colors.
-
-You can use the color name instead of RGB values.
-
-### Available colors
-
-| Color  | Command                  |
-| ------ | ------------------------ |
-| Red    | `sudo victus-rgb red`    |
-| Green  | `sudo victus-rgb green`  |
-| Blue   | `sudo victus-rgb blue`   |
-| Yellow | `sudo victus-rgb yellow` |
-| Cyan   | `sudo victus-rgb cyan`   |
-| Purple | `sudo victus-rgb purple` |
-| White  | `sudo victus-rgb white`  |
-| Off    | `sudo victus-rgb off`    |
-
-### Example
-
-Set keyboard to purple:
 
 ```
-sudo victus-rgb purple
-```
-
-Set keyboard to cyan:
-
-```
-sudo victus-rgb cyan
-```
-
-Turn off the keyboard lighting:
-
-```
-sudo victus-rgb off
-```
-
-To inspect rgb values of current lighting:
-
-```
-sudo victus-rgb current
-```
-
-### Equivalent RGB values
-
-| Color  | RGB         |
-| ------ | ----------- |
-| Red    | 255 0 0     |
-| Green  | 0 255 0     |
-| Blue   | 0 0 255     |
-| Yellow | 255 255 0   |
-| Cyan   | 0 255 255   |
-| Purple | 100 12 223  |
-| White  | 255 255 255 |
-| Off    | 0 0 0       |
 
 ---
 
 ## Requirements
 
 - Linux
-- Root access
-- `ec_sys` kernel module with write support
 - Python 3
+- Root access
+- `ec_sys` kernel module
 
----
-
-## Enable EC write access
-
-Load the EC module with write support:
-
-```bash
-sudo modprobe ec_sys write_support=1
-```
-
-You may also need to mount debugfs:
-
-```bash
-sudo mount -t debugfs none /sys/kernel/debug
-```
+The program automatically loads the module when needed.
 
 ---
 
 ## Installation
 
-Clone or download this repository.
+Clone or download the repository.
 
 Make the script executable:
 
@@ -139,59 +78,151 @@ Optional: install globally
 sudo mv victus-rgb.py /usr/local/bin/victus-rgb
 ```
 
-If you want to try before making executable.
+Then run commands like:
 
 ```bash
-sudo python victus-rgb.py R G B (or any preset color)
+sudo victus-rgb red
 ```
 
 ---
 
-## Usage
+## Preset Colors
 
-Run with root privileges.
+| Color       | Command                       |
+| ----------- | ----------------------------- |
+| red         | `sudo victus-rgb red`         |
+| green       | `sudo victus-rgb green`       |
+| blue        | `sudo victus-rgb blue`        |
+| yellow      | `sudo victus-rgb yellow`      |
+| cyan        | `sudo victus-rgb cyan`        |
+| purple      | `sudo victus-rgb purple`      |
+| neon-purple | `sudo victus-rgb neon-purple` |
+| white       | `sudo victus-rgb white`       |
+| off         | `sudo victus-rgb off`         |
 
+Example:
+
+```bash
+sudo victus-rgb neon-purple
 ```
 
+---
+
+## Custom RGB
+
+You can set any RGB color.
+
+```
 sudo victus-rgb R G B
-
 ```
 
-Where:
+Example:
 
-- `R` = red value (0–255)
-- `G` = green value (0–255)
-- `B` = blue value (0–255)
-
-### Examples
-
-Red
-
-```
-
-sudo victus-rgb 255 0 0
-
-```
-
-Green
-
-```
-
-sudo victus-rgb 0 255 0
-
-```
-
-Blue
-
-```
-
-sudo victus-rgb 0 0 255
-
+```bash
+sudo victus-rgb 120 40 255
 ```
 
 ---
 
-## Supported hardware
+## Read Current Color
+
+Display the RGB value currently stored in the EC.
+
+```bash
+sudo victus-rgb current
+```
+
+Example output:
+
+```
+Current RGB: 255 0 0
+```
+
+---
+
+## Lighting Effects
+
+All lighting effects run **in the background** and continue even after the terminal closes.
+
+Starting a new effect **automatically stops the previous one**.
+
+---
+
+### Smooth Rainbow
+
+Cycle through all colors smoothly.
+
+```bash
+sudo victus-rgb rainbow
+```
+
+Adjust speed:
+
+```bash
+sudo victus-rgb rainbow 8
+```
+
+---
+
+### Breathing Effect
+
+Fade brightness in and out.
+
+```bash
+sudo victus-rgb breathe red
+```
+
+Adjust speed:
+
+```bash
+sudo victus-rgb breathe neon-purple 7
+```
+
+---
+
+### Alternate Between Two Colors
+
+Switch between two colors repeatedly.
+
+```bash
+sudo victus-rgb alternate red blue
+```
+
+Adjust speed:
+
+```bash
+sudo victus-rgb alternate red blue 8
+```
+
+---
+
+### Fade Between Two Colors
+
+Smooth transition between two colors.
+
+```bash
+sudo victus-rgb fade red blue
+```
+
+Adjust speed:
+
+```bash
+sudo victus-rgb fade neon-purple cyan 7
+```
+
+---
+
+## Stop Effects
+
+Stop all running lighting effects.
+
+```bash
+sudo victus-rgb stop
+```
+
+---
+
+## Supported Hardware
 
 Tested on:
 
@@ -213,19 +244,10 @@ Incorrect values may:
 
 Use at your own risk.
 
----
-
-## Future improvements
-
-- brightness control
-- color presets
-- animation effects
-- integration with OpenRGB
-- GUI interface
-
----
-
 ## License
 
 MIT License
+
+```
+
 ```

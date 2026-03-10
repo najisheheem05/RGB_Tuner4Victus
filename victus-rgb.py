@@ -22,6 +22,11 @@ PRESET_COLORS = {
 }
 
 
+# --------------------------
+# SYSTEM
+# --------------------------
+
+
 def require_root():
     if os.geteuid() != 0:
         print("Run with sudo.")
@@ -29,6 +34,7 @@ def require_root():
 
 
 def ensure_ec_access():
+
     if not os.path.exists("/sys/kernel/debug"):
         subprocess.run(
             ["mount", "-t", "debugfs", "none", "/sys/kernel/debug"], check=True
@@ -42,14 +48,22 @@ def ensure_ec_access():
         sys.exit(1)
 
 
+# --------------------------
+# EC ACCESS
+# --------------------------
+
+
 def write_rgb(r, g, b):
+
     data = bytes([r, g, b])
+
     with open(EC_PATH, "r+b", buffering=0) as f:
         f.seek(OFFSET)
         f.write(data)
 
 
 def read_current():
+
     with open(EC_PATH, "rb") as f:
         f.seek(OFFSET)
         r, g, b = f.read(3)
@@ -57,28 +71,54 @@ def read_current():
     print(f"Current RGB: {r} {g} {b}")
 
 
+# --------------------------
+# HELPERS
+# --------------------------
+
+
 def speed_delay(speed):
+
     speed = max(1, min(speed, 10))
+
     return 0.12 - speed * 0.01
 
 
-def rgb_to_hsv(color):
-    r, g, b = color
-    return colorsys.rgb_to_hsv(r / 255, g / 255, b / 255)
-
-
 def hsv_to_rgb(h, s, v):
+
     r, g, b = colorsys.hsv_to_rgb(h, s, v)
 
     return (int(r * 255), int(g * 255), int(b * 255))
 
 
-# -----------------------
+def kill_previous():
+
+    subprocess.run(
+        ["pkill", "-f", "victus-rgb.*--worker"],
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+
+
+def run_background():
+
+    kill_previous()
+
+    subprocess.Popen(
+        [sys.executable] + sys.argv + ["--worker"],
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+
+    print("Effect started in background.")
+    sys.exit(0)
+
+
+# --------------------------
 # EFFECTS
-# -----------------------
+# --------------------------
 
 
-def smooth_rainbow(speed=5):
+def rainbow(speed=5):
 
     delay = speed_delay(speed)
     hue = 0
@@ -93,25 +133,20 @@ def smooth_rainbow(speed=5):
         time.sleep(delay)
 
 
-def breathing(color, speed=5):
+def breathe(color, speed=5):
 
     delay = speed_delay(speed)
 
-    h, s, v = rgb_to_hsv(color)
+    r, g, b = color
+    h, s, v = colorsys.rgb_to_hsv(r / 255, g / 255, b / 255)
 
     while True:
         for i in range(0, 101, 2):
-            val = i / 100
-
-            write_rgb(*hsv_to_rgb(h, s, val))
-
+            write_rgb(*hsv_to_rgb(h, s, i / 100))
             time.sleep(delay)
 
         for i in range(100, -1, -2):
-            val = i / 100
-
-            write_rgb(*hsv_to_rgb(h, s, val))
-
+            write_rgb(*hsv_to_rgb(h, s, i / 100))
             time.sleep(delay)
 
 
@@ -141,7 +176,6 @@ def fade(c1, c2, speed=5):
             b = int(b1 + (b2 - b1) * (i / 100))
 
             write_rgb(r, g, b)
-
             time.sleep(delay)
 
         for i in range(100, -1, -2):
@@ -150,30 +184,27 @@ def fade(c1, c2, speed=5):
             b = int(b1 + (b2 - b1) * (i / 100))
 
             write_rgb(r, g, b)
-
             time.sleep(delay)
 
 
-# -----------------------
+# --------------------------
 # CLI
-# -----------------------
+# --------------------------
 
 
 def usage():
 
     print("Usage:")
-    print("  victus-rgb red")
-    print("  victus-rgb neon-purple")
-    print("  victus-rgb 255 0 0")
-    print("  victus-rgb current")
-    print("  victus-rgb rainbow")
-    print("  victus-rgb rainbow 8")
-    print("  victus-rgb breathe red")
-    print("  victus-rgb breathe red 7")
-    print("  victus-rgb alternate red blue")
-    print("  victus-rgb alternate red blue 8")
-    print("  victus-rgb fade red blue")
-    print("  victus-rgb fade red blue 8")
+    print("victus-rgb red")
+    print("victus-rgb 255 0 0")
+    print("victus-rgb current")
+    print("victus-rgb rainbow")
+    print("victus-rgb rainbow 8")
+    print("victus-rgb breathe red")
+    print("victus-rgb breathe red 7")
+    print("victus-rgb alternate red blue")
+    print("victus-rgb fade red blue")
+    print("victus-rgb stop")
 
     sys.exit(1)
 
@@ -183,7 +214,9 @@ def main():
     require_root()
     ensure_ec_access()
 
-    args = sys.argv[1:]
+    worker = "--worker" in sys.argv
+
+    args = [a for a in sys.argv[1:] if a != "--worker"]
 
     if len(args) == 1:
         arg = args[0].lower()
@@ -192,11 +225,20 @@ def main():
             read_current()
             return
 
+        if arg == "stop":
+            kill_previous()
+            print("Effects stopped.")
+            return
+
         if arg == "rainbow":
-            smooth_rainbow()
+            if not worker:
+                run_background()
+
+            rainbow()
             return
 
         if arg in PRESET_COLORS:
+            kill_previous()
             write_rgb(*PRESET_COLORS[arg])
             return
 
@@ -204,7 +246,10 @@ def main():
 
     elif len(args) == 2:
         if args[0] == "rainbow":
-            smooth_rainbow(int(args[1]))
+            if not worker:
+                run_background()
+
+            rainbow(int(args[1]))
             return
 
         if args[0] == "breathe":
@@ -213,7 +258,10 @@ def main():
             if color not in PRESET_COLORS:
                 usage()
 
-            breathing(PRESET_COLORS[color])
+            if not worker:
+                run_background()
+
+            breathe(PRESET_COLORS[color])
             return
 
         usage()
@@ -226,7 +274,10 @@ def main():
             if color not in PRESET_COLORS:
                 usage()
 
-            breathing(PRESET_COLORS[color], speed)
+            if not worker:
+                run_background()
+
+            breathe(PRESET_COLORS[color], speed)
             return
 
         if args[0] == "alternate":
@@ -235,6 +286,9 @@ def main():
 
             if c1 not in PRESET_COLORS or c2 not in PRESET_COLORS:
                 usage()
+
+            if not worker:
+                run_background()
 
             alternate(PRESET_COLORS[c1], PRESET_COLORS[c2])
             return
@@ -245,6 +299,9 @@ def main():
 
             if c1 not in PRESET_COLORS or c2 not in PRESET_COLORS:
                 usage()
+
+            if not worker:
+                run_background()
 
             fade(PRESET_COLORS[c1], PRESET_COLORS[c2])
             return
@@ -257,6 +314,7 @@ def main():
         except:
             usage()
 
+        kill_previous()
         write_rgb(r, g, b)
         return
 
@@ -269,6 +327,9 @@ def main():
             if c1 not in PRESET_COLORS or c2 not in PRESET_COLORS:
                 usage()
 
+            if not worker:
+                run_background()
+
             alternate(PRESET_COLORS[c1], PRESET_COLORS[c2], speed)
             return
 
@@ -279,6 +340,9 @@ def main():
 
             if c1 not in PRESET_COLORS or c2 not in PRESET_COLORS:
                 usage()
+
+            if not worker:
+                run_background()
 
             fade(PRESET_COLORS[c1], PRESET_COLORS[c2], speed)
             return
