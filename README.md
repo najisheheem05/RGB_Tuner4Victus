@@ -77,6 +77,12 @@ Turn off the keyboard lighting:
 sudo victus-rgb off
 ```
 
+To inspect rgb values of current lighting:
+
+```
+sudo victus-rgb current
+```
+
 ### Equivalent RGB values
 
 | Color  | RGB         |

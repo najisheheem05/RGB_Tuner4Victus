@@ -12,7 +12,7 @@ PRESET_COLORS = {
     "blue": (0, 0, 255),
     "yellow": (255, 255, 0),
     "cyan": (0, 255, 255),
-    "purple": (255, 0, 255),
+    "purple": (100, 12, 223),
     "white": (255, 255, 255),
     "off": (0, 0, 0),
 }
@@ -20,19 +20,51 @@ PRESET_COLORS = {
 
 def require_root():
     if os.geteuid() != 0:
-        print("Please run with sudo.")
+        print("Run with sudo.")
         sys.exit(1)
+
+
+def read_current():
+    try:
+        with open(EC_PATH, "rb") as f:
+            f.seek(OFFSET)
+            data = f.read(3)
+    except Exception as e:
+        print("Failed to read EC:", e)
+        sys.exit(1)
+
+    r, g, b = data[0], data[1], data[2]
+    print(f"Current RGB: {r} {g} {b}")
+
+
+def write_rgb(r, g, b):
+    data = bytes([r, g, b])
+
+    try:
+        with open(EC_PATH, "r+b", buffering=0) as f:
+            f.seek(OFFSET)
+            f.write(data)
+    except Exception as e:
+        print("Failed to write EC:", e)
+        sys.exit(1)
+
+    print(f"Keyboard color set to: {r} {g} {b}")
 
 
 def parse_args():
     if len(sys.argv) == 2:
-        color = sys.argv[1].lower()
-        if color in PRESET_COLORS:
-            return PRESET_COLORS[color]
-        else:
-            print("Unknown color.")
-            print("Available colors:", ", ".join(PRESET_COLORS.keys()))
-            sys.exit(1)
+        arg = sys.argv[1].lower()
+
+        if arg == "current":
+            read_current()
+            sys.exit(0)
+
+        if arg in PRESET_COLORS:
+            return PRESET_COLORS[arg]
+
+        print("Unknown color.")
+        print("Available colors:", ", ".join(PRESET_COLORS.keys()))
+        sys.exit(1)
 
     elif len(sys.argv) == 4:
         try:
@@ -45,7 +77,7 @@ def parse_args():
 
         for v in (r, g, b):
             if v < 0 or v > 255:
-                print("RGB values must be between 0 and 255.")
+                print("RGB values must be 0–255.")
                 sys.exit(1)
 
         return (r, g, b)
@@ -54,29 +86,18 @@ def parse_args():
         print("Usage:")
         print("  victus-rgb red")
         print("  victus-rgb 255 0 0")
-        sys.exit(1)
-
-
-def write_rgb(r, g, b):
-    data = bytes([r, g, b])
-
-    try:
-        with open(EC_PATH, "r+b", buffering=0) as f:
-            f.seek(OFFSET)
-            f.write(data)
-    except Exception as e:
-        print("Failed to write EC registers:", e)
+        print("  victus-rgb current")
         sys.exit(1)
 
 
 def main():
     require_root()
 
-    r, g, b = parse_args()
+    result = parse_args()
 
-    write_rgb(r, g, b)
-
-    print(f"Keyboard color set to: {r} {g} {b}")
+    if result:
+        r, g, b = result
+        write_rgb(r, g, b)
 
 
 if __name__ == "__main__":
