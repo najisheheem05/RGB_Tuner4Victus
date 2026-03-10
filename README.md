@@ -148,7 +148,7 @@ Starting a new effect **automatically stops the previous one**.
 
 ---
 
-### Smooth Rainbow
+### Rainbow
 
 Cycle through all colors smoothly.
 
@@ -212,6 +212,14 @@ sudo victus-rgb fade neon-purple cyan 7
 
 ---
 
+All of these effects can be run using RGB values as well ("R G B R G B" if there are 2 colors : else R G B)
+
+```bash
+sudo victus-rgb fade 255 0 0 0 255 0
+```
+
+---
+
 ## Stop Effects
 
 Stop all running lighting effects.
@@ -246,8 +254,4 @@ Use at your own risk.
 
 ## License
 
-MIT License
-
-```
-
-```
+MIT Licence
