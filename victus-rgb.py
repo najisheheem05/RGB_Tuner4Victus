@@ -42,6 +42,13 @@ def ensure_ec_access():
         sys.exit(1)
 
 
+def write_rgb(r, g, b):
+    data = bytes([r, g, b])
+    with open(EC_PATH, "r+b", buffering=0) as f:
+        f.seek(OFFSET)
+        f.write(data)
+
+
 def read_current():
     with open(EC_PATH, "rb") as f:
         f.seek(OFFSET)
@@ -50,110 +57,142 @@ def read_current():
     print(f"Current RGB: {r} {g} {b}")
 
 
-def write_rgb(r, g, b):
-    data = bytes([r, g, b])
-
-    with open(EC_PATH, "r+b", buffering=0) as f:
-        f.seek(OFFSET)
-        f.write(data)
+def speed_delay(speed):
+    speed = max(1, min(speed, 10))
+    return 0.12 - speed * 0.01
 
 
-# --------------------------
+def rgb_to_hsv(color):
+    r, g, b = color
+    return colorsys.rgb_to_hsv(r / 255, g / 255, b / 255)
+
+
+def hsv_to_rgb(h, s, v):
+    r, g, b = colorsys.hsv_to_rgb(h, s, v)
+
+    return (int(r * 255), int(g * 255), int(b * 255))
+
+
+# -----------------------
 # EFFECTS
-# --------------------------
+# -----------------------
 
 
-def rainbow():
-    colors = [
-        (255, 0, 0),
-        (255, 127, 0),
-        (255, 255, 0),
-        (0, 255, 0),
-        (0, 0, 255),
-        (75, 0, 130),
-        (148, 0, 211),
-    ]
+def smooth_rainbow(speed=5):
 
-    while True:
-        for c in colors:
-            write_rgb(*c)
-            time.sleep(0.5)
-
-
-def smooth_rainbow(speed=0.02):
+    delay = speed_delay(speed)
     hue = 0
 
     while True:
-        r, g, b = colorsys.hsv_to_rgb(hue, 1, 1)
+        write_rgb(*hsv_to_rgb(hue, 1, 1))
 
-        write_rgb(int(r * 255), int(g * 255), int(b * 255))
-
-        hue += 0.002
+        hue += 0.003
         if hue >= 1:
             hue = 0
 
-        time.sleep(speed)
+        time.sleep(delay)
 
 
-def breathing(color, speed=0.02):
-    r, g, b = color
+def breathing(color, speed=5):
+
+    delay = speed_delay(speed)
+
+    h, s, v = rgb_to_hsv(color)
 
     while True:
-        for i in range(0, 256, 3):
-            write_rgb(r * i // 255, g * i // 255, b * i // 255)
-            time.sleep(speed)
+        for i in range(0, 101, 2):
+            val = i / 100
 
-        for i in range(255, -1, -3):
-            write_rgb(r * i // 255, g * i // 255, b * i // 255)
-            time.sleep(speed)
+            write_rgb(*hsv_to_rgb(h, s, val))
 
+            time.sleep(delay)
 
-def scale_brightness(color, percent):
-    r, g, b = color
-    factor = percent / 100
+        for i in range(100, -1, -2):
+            val = i / 100
 
-    return (
-        int(r * factor),
-        int(g * factor),
-        int(b * factor),
-    )
+            write_rgb(*hsv_to_rgb(h, s, val))
+
+            time.sleep(delay)
 
 
-# --------------------------
+def alternate(c1, c2, speed=5):
+
+    delay = speed_delay(speed)
+
+    while True:
+        write_rgb(*c1)
+        time.sleep(delay * 6)
+
+        write_rgb(*c2)
+        time.sleep(delay * 6)
+
+
+def fade(c1, c2, speed=5):
+
+    delay = speed_delay(speed)
+
+    r1, g1, b1 = c1
+    r2, g2, b2 = c2
+
+    while True:
+        for i in range(0, 101, 2):
+            r = int(r1 + (r2 - r1) * (i / 100))
+            g = int(g1 + (g2 - g1) * (i / 100))
+            b = int(b1 + (b2 - b1) * (i / 100))
+
+            write_rgb(r, g, b)
+
+            time.sleep(delay)
+
+        for i in range(100, -1, -2):
+            r = int(r1 + (r2 - r1) * (i / 100))
+            g = int(g1 + (g2 - g1) * (i / 100))
+            b = int(b1 + (b2 - b1) * (i / 100))
+
+            write_rgb(r, g, b)
+
+            time.sleep(delay)
+
+
+# -----------------------
 # CLI
-# --------------------------
+# -----------------------
 
 
 def usage():
+
     print("Usage:")
     print("  victus-rgb red")
     print("  victus-rgb neon-purple")
     print("  victus-rgb 255 0 0")
     print("  victus-rgb current")
     print("  victus-rgb rainbow")
-    print("  victus-rgb smooth-rainbow")
+    print("  victus-rgb rainbow 8")
     print("  victus-rgb breathe red")
-    print("  victus-rgb breathe red 0.01")
-    print("  victus-rgb brightness red 50")
+    print("  victus-rgb breathe red 7")
+    print("  victus-rgb alternate red blue")
+    print("  victus-rgb alternate red blue 8")
+    print("  victus-rgb fade red blue")
+    print("  victus-rgb fade red blue 8")
+
     sys.exit(1)
 
 
 def main():
+
     require_root()
     ensure_ec_access()
 
-    if len(sys.argv) == 2:
-        arg = sys.argv[1].lower()
+    args = sys.argv[1:]
+
+    if len(args) == 1:
+        arg = args[0].lower()
 
         if arg == "current":
             read_current()
             return
 
         if arg == "rainbow":
-            rainbow()
-            return
-
-        if arg == "smooth-rainbow":
             smooth_rainbow()
             return
 
@@ -163,30 +202,26 @@ def main():
 
         usage()
 
-    elif len(sys.argv) == 3:
-        cmd = sys.argv[1]
-        color = sys.argv[2]
+    elif len(args) == 2:
+        if args[0] == "rainbow":
+            smooth_rainbow(int(args[1]))
+            return
 
-        if cmd == "breathe" and color in PRESET_COLORS:
+        if args[0] == "breathe":
+            color = args[1]
+
+            if color not in PRESET_COLORS:
+                usage()
+
             breathing(PRESET_COLORS[color])
             return
 
         usage()
 
-    elif len(sys.argv) == 4:
-        if sys.argv[1] == "brightness":
-            color = sys.argv[2]
-            percent = int(sys.argv[3])
-
-            if color not in PRESET_COLORS:
-                usage()
-
-            write_rgb(*scale_brightness(PRESET_COLORS[color], percent))
-            return
-
-        if sys.argv[1] == "breathe":
-            color = sys.argv[2]
-            speed = float(sys.argv[3])
+    elif len(args) == 3:
+        if args[0] == "breathe":
+            color = args[1]
+            speed = int(args[2])
 
             if color not in PRESET_COLORS:
                 usage()
@@ -194,15 +229,61 @@ def main():
             breathing(PRESET_COLORS[color], speed)
             return
 
+        if args[0] == "alternate":
+            c1 = args[1]
+            c2 = args[2]
+
+            if c1 not in PRESET_COLORS or c2 not in PRESET_COLORS:
+                usage()
+
+            alternate(PRESET_COLORS[c1], PRESET_COLORS[c2])
+            return
+
+        if args[0] == "fade":
+            c1 = args[1]
+            c2 = args[2]
+
+            if c1 not in PRESET_COLORS or c2 not in PRESET_COLORS:
+                usage()
+
+            fade(PRESET_COLORS[c1], PRESET_COLORS[c2])
+            return
+
         try:
-            r = int(sys.argv[1])
-            g = int(sys.argv[2])
-            b = int(sys.argv[3])
-        except ValueError:
+            r = int(args[0])
+            g = int(args[1])
+            b = int(args[2])
+
+        except:
             usage()
 
         write_rgb(r, g, b)
         return
+
+    elif len(args) == 4:
+        if args[0] == "alternate":
+            c1 = args[1]
+            c2 = args[2]
+            speed = int(args[3])
+
+            if c1 not in PRESET_COLORS or c2 not in PRESET_COLORS:
+                usage()
+
+            alternate(PRESET_COLORS[c1], PRESET_COLORS[c2], speed)
+            return
+
+        if args[0] == "fade":
+            c1 = args[1]
+            c2 = args[2]
+            speed = int(args[3])
+
+            if c1 not in PRESET_COLORS or c2 not in PRESET_COLORS:
+                usage()
+
+            fade(PRESET_COLORS[c1], PRESET_COLORS[c2], speed)
+            return
+
+        usage()
 
     else:
         usage()
