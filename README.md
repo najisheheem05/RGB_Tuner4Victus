@@ -38,6 +38,60 @@ The program writes the RGB bytes directly to:
 
 ---
 
+## Preset Colors
+
+The program also supports several predefined colors.
+
+You can use the color name instead of RGB values.
+
+### Available colors
+
+| Color  | Command                  |
+| ------ | ------------------------ |
+| Red    | `sudo victus-rgb red`    |
+| Green  | `sudo victus-rgb green`  |
+| Blue   | `sudo victus-rgb blue`   |
+| Yellow | `sudo victus-rgb yellow` |
+| Cyan   | `sudo victus-rgb cyan`   |
+| Purple | `sudo victus-rgb purple` |
+| White  | `sudo victus-rgb white`  |
+| Off    | `sudo victus-rgb off`    |
+
+### Example
+
+Set keyboard to purple:
+
+```
+sudo victus-rgb purple
+```
+
+Set keyboard to cyan:
+
+```
+sudo victus-rgb cyan
+```
+
+Turn off the keyboard lighting:
+
+```
+sudo victus-rgb off
+```
+
+### Equivalent RGB values
+
+| Color  | RGB         |
+| ------ | ----------- |
+| Red    | 255 0 0     |
+| Green  | 0 255 0     |
+| Blue   | 0 0 255     |
+| Yellow | 255 255 0   |
+| Cyan   | 0 255 255   |
+| Purple | 255 0 255   |
+| White  | 255 255 255 |
+| Off    | 0 0 0       |
+
+---
+
 ## Requirements
 
 - Linux
