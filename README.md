@@ -139,6 +139,10 @@ Optional: install globally
 sudo mv victus-rgb.py /usr/local/bin/victus-rgb
 ```
 
+If you want to try before making executable.
+
+```bash
+sudo python victus-rgb.py R G B (or any preset color)
 ---
 
 ## Usage
@@ -146,7 +150,9 @@ sudo mv victus-rgb.py /usr/local/bin/victus-rgb
 Run with root privileges.
 
 ```
+
 sudo victus-rgb R G B
+
 ```
 
 Where:
@@ -160,19 +166,25 @@ Where:
 Red
 
 ```
+
 sudo victus-rgb 255 0 0
+
 ```
 
 Green
 
 ```
+
 sudo victus-rgb 0 255 0
+
 ```
 
 Blue
 
 ```
+
 sudo victus-rgb 0 0 255
+
 ```
 
 ---
@@ -214,3 +226,4 @@ Use at your own risk.
 ## License
 
 MIT License
+```
